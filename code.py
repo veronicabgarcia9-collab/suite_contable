@@ -21,10 +21,11 @@ LIMITE_GRATIS = 3
 # --- ESTILOS MODO OSCURO EJECUTIVO ---
 st.markdown("""
     <style>
-    .stApp { background-color: #0E1117; color: #E0E0E0; }
+    /* Forzar fondo oscuro en toda la app */
+    .stApp, .main { background-color: #0E1117 !important; color: #E0E0E0 !important; }
     
     /* Título General */
-    h1 { color: #4DA8DA; font-family: 'Segoe UI', sans-serif; font-weight: 800; text-align: center; text-transform: uppercase; letter-spacing: 1px; padding-bottom: 20px; }
+    h1 { color: #4DA8DA !important; font-family: 'Segoe UI', sans-serif; font-weight: 800; text-align: center; text-transform: uppercase; letter-spacing: 1px; padding-bottom: 20px; }
     
     /* Subtítulos y Labels */
     h2, h3, h4, label, .stMarkdown p { color: #4DA8DA !important; }
@@ -38,29 +39,29 @@ st.markdown("""
     
     /* Contenedor de contador */
     .counter-container { 
-        background-color: #1E1E1E; 
-        border: 1px solid #333; 
+        background-color: #1E1E1E !important; 
+        border: 1px solid #333 !important; 
         border-radius: 10px; 
         padding: 15px; 
         text-align: center; 
         margin-bottom: 25px; 
         box-shadow: 0 4px 6px rgba(0,0,0,0.3); 
-        color: #E0E0E0; 
+        color: #E0E0E0 !important; 
     }
-    .counter-number { color: #00FFCC; font-weight: 800; font-size: 24px; }
+    .counter-number { color: #00FFCC !important; font-weight: 800; font-size: 24px; }
 
     /* Botones Principales */
     div.stButton > button:first-child { 
-        background-color: #4DA8DA; 
-        color: #0E1117; 
-        border: none; 
-        border-radius: 8px; 
-        font-weight: bold; 
-        width: 100%; 
-        transition: 0.3s; 
-        height: 3rem;
+        background-color: #4DA8DA !important; 
+        color: #0E1117 !important; 
+        border: none !important; 
+        border-radius: 8px !important; 
+        font-weight: bold !important; 
+        width: 100% !important; 
+        transition: 0.3s !important; 
+        height: 3rem !important;
     }
-    div.stButton > button:first-child:hover { background-color: #388BB8; transform: translateY(-2px); }
+    div.stButton > button:first-child:hover { background-color: #388BB8 !important; transform: translateY(-2px); }
     
     /* Botón de Descarga */
     .stDownloadButton > button { 
@@ -68,43 +69,43 @@ st.markdown("""
         color: #0E1117 !important; 
         border: none !important; 
         border-radius: 8px !important; 
-        width: 100%; 
-        font-weight: bold; 
-        transition: 0.3s;
+        width: 100% !important; 
+        font-weight: bold !important; 
+        transition: 0.3s !important;
     }
-    .stDownloadButton > button:hover { background-color: #00CCA3 !important; opacity: 0.9; }
+    .stDownloadButton > button:hover { background-color: #00CCA3 !important; opacity: 0.9 !important; }
     
     /* Card de Donación */
     .donation-card { 
-        background-color: #1E1E1E; 
-        border: 1px solid #333; 
+        background-color: #1E1E1E !important; 
+        border: 1px solid #333 !important; 
         border-radius: 12px; 
         padding: 25px; 
         text-align: center; 
         box-shadow: 0 10px 20px rgba(0,0,0,0.4); 
-        color: #E0E0E0; 
+        color: #E0E0E0 !important; 
     }
     
     /* Pestañas (TAMAÑO 22px y Colores Dark) */
-    .stTabs [data-baseweb="tab-list"] { gap: 24px; background-color: transparent; }
+    .stTabs [data-baseweb="tab-list"] { gap: 24px; background-color: transparent !important; }
     .stTabs [data-baseweb="tab"] { 
         height: 60px; 
         white-space: pre-wrap; 
-        background-color: #1E1E1E; 
+        background-color: #1E1E1E !important; 
         border-radius: 8px 8px 0px 0px; 
         padding: 10px 20px; 
         font-weight: bold; 
         font-size: 22px !important; 
-        color: #888; 
+        color: #888 !important; 
     }
     .stTabs [aria-selected="true"] { 
         color: #4DA8DA !important; 
         border-bottom: 4px solid #4DA8DA !important; 
-        background-color: #262730;
+        background-color: #262730 !important;
     }
 
     /* Dataframes y tablas */
-    .stDataFrame, .stTable { background-color: #1E1E1E; border-radius: 10px; }
+    .stDataFrame, .stTable { background-color: #1E1E1E !important; border-radius: 10px; }
     </style>
     """, unsafe_allow_html=True)
 
@@ -116,10 +117,12 @@ def limpiar_monto_ar(texto):
     t = str(texto).replace('$', '').replace(' ', '').replace('"', '').replace('+', '')
     es_negativo = '-' in t
     t = t.replace('-', '')
+    
     if len(t) >= 3 and t[-3] in ['.', ',']:
         t = t[:-3].replace('.', '').replace(',', '') + '.' + t[-2:]
     else:
         t = t.replace('.', '').replace(',', '.')
+        
     try: return -float(t) if es_negativo else float(t)
     except: return 0.0
 
@@ -175,17 +178,20 @@ def aplicar_diccionario_final(df, df_dic_manual=None):
     return df
 
 def motor_galicia_tradicional(pdf):
+    texto_p1 = pdf.pages[0].extract_text() or ""
     texto_completo = "\n".join([p.extract_text() or "" for p in pdf.pages])
     lineas = texto_completo.split('\n')
     patron_f = re.compile(r'^\s*(\d{2}/\d{2}/\d{2,4})')
     patron_m = re.compile(r'-?\d{1,3}(?:\.\d{3})*,\d{2}')
     movs, monto_ini = [], 0.0
+    
     match_ini = re.search(r'saldo[\s\n]*inicial[\s\n]*\$?[\s\n]*(-?\d{1,3}(?:\.\d{3})*,\d{2})', texto_completo.lower())
-    if match_ini: monto_ini = limpiar_monto_ar(match_ini.group(1))
+    if match_ini: 
+        monto_ini = limpiar_monto_ar(match_ini.group(1))
     else:
-        p1 = pdf.pages[0].extract_text() or ""
-        tm = patron_m.findall(p1)
-        if tm: monto_ini = limpiar_monto_ar(tm[0])
+        todos_montos = patron_m.findall(texto_p1)
+        if todos_montos: monto_ini = limpiar_monto_ar(todos_montos[0])
+            
     last_s = monto_ini
     for linea in lineas:
         match_f = patron_f.match(linea.strip())
@@ -195,16 +201,20 @@ def motor_galicia_tradicional(pdf):
             if ms and "SALDO" not in linea.upper():
                 val = limpiar_monto_ar(ms[-2] if len(ms) >= 2 else ms[0])
                 sa = limpiar_monto_ar(ms[-1])
+                
                 dif = round(sa - last_s, 2)
-                if abs(dif - val) > 0.01 and abs(dif + val) < 0.01: val = -val 
+                if abs(dif - val) > 0.01 and abs(dif + val) < 0.01:
+                    val = -val 
+                    
                 conc = re.sub(r'\s+', ' ', linea.replace(f, "")).strip()
                 for m in ms: conc = conc.replace(m, "")
                 movs.append({'Fecha': f, 'Concepto': conc, 'Debitos': abs(val) if val < 0 else 0.0, 'Creditos': val if val > 0 else 0.0, 'Neto': val, 'Saldo': sa})
                 last_s = sa
+    
     df = pd.DataFrame(movs)
     if not df.empty:
-        fi = pd.DataFrame([{'Fecha': df.iloc[0]['Fecha'], 'Concepto': 'SALDO INICIAL', 'Debitos': 0.0, 'Creditos': 0.0, 'Neto': 0.0, 'Saldo': monto_ini}])
-        df = pd.concat([fi, df], ignore_index=True)
+        fila_ini = pd.DataFrame([{'Fecha': df.iloc[0]['Fecha'], 'Concepto': 'SALDO INICIAL', 'Debitos': 0.0, 'Creditos': 0.0, 'Neto': 0.0, 'Saldo': monto_ini}])
+        df = pd.concat([fila_ini, df], ignore_index=True)
     return {"Resumen Galicia": df}
 
 def motor_galicia_office(pdf):
@@ -214,18 +224,21 @@ def motor_galicia_office(pdf):
     patron_monto = re.compile(r'([+-]?\s?\$?\s?\d{1,3}(?:\.\d{3})*,\d{2})(?!\d)')
     movs_crudos = []
     mov_actual = None
+    
     for linea in lineas:
         if not linea.strip() or "office" in linea.lower(): continue
         match_f = patron_fecha.search(linea.strip())
+        es_nueva_fila = match_f and match_f.start() < 15
         montos = patron_monto.findall(linea)
-        if match_f and match_f.start() < 15:
+        if es_nueva_fila:
             if mov_actual: movs_crudos.append(mov_actual)
             mov_actual = {'Fecha': match_f.group(1), 'Concepto': re.sub(r'\s+', ' ', linea.replace(match_f.group(1), "")).strip().replace('"', ''), 'Montos_Raw': montos}
         elif mov_actual:
             if montos: mov_actual['Montos_Raw'].extend(montos)
             mov_actual['Concepto'] += " " + re.sub(r'\s+', ' ', linea).strip()
     if mov_actual: movs_crudos.append(mov_actual)
-    movs_fin = []
+    
+    movimientos = []
     for i, mov in enumerate(movs_crudos):
         montos = mov['Montos_Raw']
         if len(montos) >= 2: m_mov_str, m_saldo_str = montos[-2], montos[-1]
@@ -237,18 +250,19 @@ def motor_galicia_office(pdf):
         if '-' in m_mov_str: neto = -val_mov
         elif '+' in m_mov_str: neto = val_mov
         else:
-            if val_saldo is not None and i > 0 and movs_fin[-1]['Saldo'] is not None:
-                delta = val_saldo - movs_fin[-1]['Saldo']
+            if val_saldo is not None and i > 0 and movimientos[-1]['Saldo'] is not None:
+                delta = val_saldo - movimientos[-1]['Saldo']
                 neto = val_mov if abs(delta - val_mov) < 0.10 else -val_mov
             else: neto = val_mov if any(x in mov['Concepto'].upper() for x in ["DEP", "CREDITO", "RESCATE", "VENTA", "TICKET"]) else -val_mov
-        movs_fin.append({'Fecha': mov['Fecha'], 'Concepto': mov['Concepto'], 'Debitos': abs(neto) if neto < 0 else 0.0, 'Creditos': neto if neto > 0 else 0.0, 'Neto': neto, 'Saldo': val_saldo})
-    df = pd.DataFrame(movs_fin)
+        movimientos.append({'Fecha': mov['Fecha'], 'Concepto': mov['Concepto'], 'Debitos': abs(neto) if neto < 0 else 0.0, 'Creditos': neto if neto > 0 else 0.0, 'Neto': neto, 'Saldo': val_saldo})
+    
+    df = pd.DataFrame(movimientos)
     if not df.empty:
-        s0 = df.iloc[0]['Saldo'] if df.iloc[0]['Saldo'] is not None else 0.0
-        ini = s0 - df.iloc[0]['Neto']
-        df['Saldo'] = df['Saldo'].fillna(ini + df['Neto'].cumsum())
-        fi = pd.DataFrame([{'Fecha': df.iloc[0]['Fecha'], 'Concepto': 'SALDO INICIAL', 'Debitos': 0.0, 'Creditos': 0.0, 'Neto': 0.0, 'Saldo': ini}])
-        df = pd.concat([fi, df], ignore_index=True)
+        s_pdf_0 = df.iloc[0]['Saldo'] if df.iloc[0]['Saldo'] is not None else 0.0
+        monto_inicial = s_pdf_0 - df.iloc[0]['Neto']
+        df['Saldo'] = df['Saldo'].fillna(monto_inicial + df['Neto'].cumsum())
+        fila_ini = pd.DataFrame([{'Fecha': df.iloc[0]['Fecha'], 'Concepto': 'SALDO INICIAL', 'Debitos': 0.0, 'Creditos': 0.0, 'Neto': 0.0, 'Saldo': monto_inicial}])
+        df = pd.concat([fila_ini, df], ignore_index=True)
     return {"Resumen Galicia Office": df}
 
 def motor_macro(pdf):
@@ -257,23 +271,30 @@ def motor_macro(pdf):
     patron_f = re.compile(r'(\d{2}/\d{2}/\d{2,4})')
     patron_m = re.compile(r'-?\d{1,3}(?:\.\d{3})*,\d{2}')
     cta_actual = "Cuenta Principal"
+    
     for page in pdf.pages:
         texto = page.extract_text(layout=True) or ""
         for linea in texto.split('\n'):
             linea_u = linea.upper()
+            
             match_c = patron_nro.search(linea_u)
             if match_c:
                 cta_actual = f"Cuenta {match_c.group(1)}"
-                if cta_actual not in cuentas: cuentas[cta_actual] = {"movs": [], "ini": 0.0, "last_saldo": 0.0}
+                if cta_actual not in cuentas:
+                    cuentas[cta_actual] = {"movs": [], "ini": 0.0, "last_saldo": 0.0, "ini_set": False}
                 continue
-            if cta_actual not in cuentas: cuentas[cta_actual] = {"movs": [], "ini": 0.0, "last_saldo": 0.0}
+                
+            if cta_actual not in cuentas: cuentas[cta_actual] = {"movs": [], "ini": 0.0, "last_saldo": 0.0, "ini_set": False}
+            
             if "SALDO ULTIMO EXTRACTO" in linea_u or "SALDO ANTERIOR" in linea_u:
                 ms = patron_m.findall(linea)
                 if ms:
                     val = limpiar_monto_ar(ms[-1])
                     cuentas[cta_actual]["ini"] = val
                     cuentas[cta_actual]["last_saldo"] = val
+                    cuentas[cta_actual]["ini_set"] = True
                 continue
+
             match_f = patron_f.search(linea)
             if match_f and not any(x in linea_u for x in ["TOTAL", "SALDO FINAL", "HOJA"]):
                 ms = patron_m.findall(linea)
@@ -285,45 +306,62 @@ def motor_macro(pdf):
                     for m in ms: conc = conc.replace(m, "")
                     cuentas[cta_actual]["movs"].append({'Fecha': match_f.group(1), 'Concepto': conc, 'Debitos': abs(neto) if neto < 0 else 0.0, 'Creditos': neto if neto > 0 else 0.0, 'Neto': neto, 'Saldo': saldo_pdf})
                     cuentas[cta_actual]["last_saldo"] = saldo_pdf
+    
     final_dfs = {}
     for cta, data in cuentas.items():
         if data["movs"]:
             df = pd.DataFrame(data["movs"])
-            fi = pd.DataFrame([{'Fecha': df.iloc[0]['Fecha'], 'Concepto': 'SALDO INICIAL', 'Debitos': 0.0, 'Creditos': 0.0, 'Neto': 0.0, 'Saldo': data["ini"]}])
-            final_dfs[cta] = pd.concat([fi, df], ignore_index=True)
+            fila_ini = pd.DataFrame([{'Fecha': df.iloc[0]['Fecha'], 'Concepto': 'SALDO INICIAL', 'Debitos': 0.0, 'Creditos': 0.0, 'Neto': 0.0, 'Saldo': data["ini"]}])
+            final_dfs[cta] = pd.concat([fila_ini, df], ignore_index=True)
     return final_dfs
 
 def motor_mercado_pago(pdf):
     texto_layout = "\n".join([p.extract_text(layout=True) or "" for p in pdf.pages])
     m_ini = re.search(r"Saldo inicial[\s:]*\$?\s*(-?[\d\.]+[,.]\d{2})", texto_layout, re.IGNORECASE)
     s_ini = limpiar_monto_ar(m_ini.group(1)) if m_ini else 0.0
-    movs, mov_actual = [], None
+    movs = []
+    mov_actual = None
     for linea in texto_layout.split('\n'):
-        if not linea.strip() or any(x in linea.upper() for x in ["DETALLE", "SALDO INICIAL", "ENTRADAS", "SALIDAS"]): continue
+        if not linea.strip() or "DETALLE DE MOVIMIENTOS" in linea.upper() or "SALDO INICIAL" in linea.upper() or "ENTRADAS:" in linea.upper() or "SALIDAS:" in linea.upper():
+            continue
         m_f = re.search(r'^(\d{2}-\d{2}-\d{4})', linea.strip())
         if m_f:
-            if mov_actual: movs.append(mov_actual)
+            if mov_actual:
+                movs.append(mov_actual)
             fecha = m_f.group(1)
             resto = linea.replace(fecha, "", 1)
             montos = re.findall(r'-?\s?\$?\s*[\d\.]+[,.]\d{2}', resto)
             ids = re.findall(r'\b\d{10,}\b', resto)
             concepto = resto
-            for m in montos: concepto = concepto.replace(m, "")
-            for i in ids: concepto = concepto.replace(i, "")
+            for m in montos: 
+                concepto = concepto.replace(m, "")
+            for i in ids: 
+                concepto = concepto.replace(i, "")
             val_str = montos[-2] if len(montos) >= 2 else (montos[0] if montos else "0")
-            mov_actual = {"Fecha": fecha.replace('-', '/'), "Concepto": concepto.strip(), "Valor_str": val_str}
+            mov_actual = {
+                "Fecha": fecha.replace('-', '/'),
+                "Concepto": concepto.strip(),
+                "Valor_str": val_str
+            }
         elif mov_actual:
             l_clean = re.sub(r'\b\d{10,}\b', '', linea).strip()
             l_clean = re.sub(r'-?\s?\$?\s*[\d\.]+[,.]\d{2}', '', l_clean).strip()
-            if l_clean and not any(x in l_clean for x in ["Mercado Libre", "www."]) and not re.match(r'^\d+/\d+', l_clean):
+            if l_clean and "Mercado Libre" not in l_clean and "www." not in l_clean and not re.match(r'^\d+/\d+', l_clean):
                 mov_actual["Concepto"] += " " + l_clean
-    if mov_actual: movs.append(mov_actual)
-    movs_fin = []
+    if mov_actual:
+        movs.append(mov_actual)
+    movimientos_finales = []
     for m in movs:
         val = limpiar_monto_ar(m["Valor_str"])
         conc = re.sub(r'\s+', ' ', m["Concepto"]).strip()
-        movs_fin.append({"Fecha": m["Fecha"], "Concepto": conc, "Debitos": abs(val) if val < 0 else 0.0, "Creditos": val if val > 0 else 0.0, "Neto": val})
-    df = pd.DataFrame(movs_fin)
+        movimientos_finales.append({
+            "Fecha": m["Fecha"],
+            "Concepto": conc,
+            "Debitos": abs(val) if val < 0 else 0.0,
+            "Creditos": val if val > 0 else 0.0,
+            "Neto": val
+        })
+    df = pd.DataFrame(movimientos_finales)
     if not df.empty:
         df['Saldo'] = s_ini + df['Neto'].cumsum()
         fi = pd.DataFrame([{"Fecha": df.iloc[0]["Fecha"], "Concepto": "SALDO INICIAL", "Debitos": 0.0, "Creditos": 0.0, "Neto": 0.0, "Saldo": s_ini}])
@@ -333,10 +371,13 @@ def motor_mercado_pago(pdf):
 def motor_icbc(pdf):
     texto = "\n".join([p.extract_text() or "" for p in pdf.pages])
     m_ini = re.search(r"SALDO\s+ULTIMO\s+EXTRACTO.*?([\d\.]+,\d{2}-?)", texto.upper().replace('\n', ' '))
-    def lim(t):
-        n = '-' in str(t); v = str(t).replace('-', '').replace('.', '').replace(',', '.')
-        return -float(v) if n else float(v)
-    s_ini = lim(m_ini.group(1)) if m_ini else 0.0
+    
+    def limpiar_icbc(t):
+        neg = '-' in str(t)
+        num = str(t).replace('-', '').replace('.', '').replace(',', '.')
+        return -float(num) if neg else float(num)
+
+    s_ini = limpiar_icbc(m_ini.group(1)) if m_ini else 0.0
     movs = []
     for line in texto.split('\n'):
         m_f = re.match(r'^(\d{2}-\d{2})\s+(.+)', line.strip())
@@ -344,8 +385,11 @@ def motor_icbc(pdf):
             f, resto = m_f.groups()
             ms = re.findall(r'\d{1,3}(?:\.\d{3})*,\d{2}-?', resto)
             if ms:
-                val = lim(ms[0]); conc = re.sub(r'\b\d{4}\b', '', resto.replace(ms[0], '').strip()).strip()
+                val = limpiar_icbc(ms[0])
+                conc = resto.replace(ms[0], '').strip()
+                conc = re.sub(r'\b\d{4}\b', '', conc).strip()
                 movs.append({'Fecha': f.replace('-', '/'), 'Concepto': conc, 'Debitos': abs(val) if val < 0 else 0.0, 'Creditos': val if val > 0 else 0.0, 'Neto': val})
+    
     df = pd.DataFrame(movs)
     if not df.empty:
         df['Saldo'] = s_ini + df['Neto'].cumsum()
@@ -353,6 +397,9 @@ def motor_icbc(pdf):
         return {"Resumen ICBC": pd.concat([fi, df], ignore_index=True)}
     return {}
 
+# -----------------------------------------------------
+# MOTOR CREDICOOP ORIGINAL RESTAURADO (INTACTO)
+# -----------------------------------------------------
 def motor_credicoop(pdf):
     movs, s_ini, ini_set = [], 0.0, False
     for page in pdf.pages:
@@ -390,13 +437,16 @@ def motor_frances(pdf):
     for line in texto.split('\n'):
         m_f = re.match(r'^(\d{2}/\d{2})\s+(.+)', line.strip())
         if m_f:
-            f_s = m_f.group(1); r_l = m_f.group(2)
-            if f_s == "00/00" or "SIN MOVIMIENTOS" in r_l.upper(): continue
+            fecha_str = m_f.group(1)
+            resto_linea = m_f.group(2)
+            if fecha_str == "00/00" or "SIN MOVIMIENTOS" in resto_linea.upper():
+                continue
             ms = re.findall(r'(-?\d{1,3}(?:\.\d{3})*,\d{2})', line)
             if ms:
-                sa = limpiar_monto_ar(ms[-1]); dif = round(sa - last_s, 2)
+                sa = limpiar_monto_ar(ms[-1])
+                dif = round(sa - last_s, 2)
                 if abs(dif) > 0.01:
-                    movs.append({"Fecha": f_s, "Concepto": line.replace(f_s, "").replace(ms[-1], "").strip(), "Debitos": abs(dif) if dif < 0 else 0.0, "Creditos": dif if dif > 0 else 0.0, "Neto": dif, "Saldo": sa})
+                    movs.append({"Fecha": fecha_str, "Concepto": line.replace(fecha_str, "").replace(ms[-1], "").strip(), "Debitos": abs(dif) if dif < 0 else 0.0, "Creditos": dif if dif > 0 else 0.0, "Neto": dif, "Saldo": sa})
                     last_s = sa
     df = pd.DataFrame(movs)
     if not df.empty:
@@ -437,8 +487,10 @@ if st.session_state.contador_usos >= LIMITE_GRATIS:
             </div>
             <br>
         """, unsafe_allow_html=True)
-        if st.button("🔄 Reiniciar App"):
-            st.session_state.contador_usos = 0; limpiar_memoria(); st.rerun()
+        if st.button("🔄 Reiniciar App", use_container_width=True):
+            st.session_state.contador_usos = 0
+            limpiar_memoria()
+            st.rerun()
     st.stop()
 
 # --- PESTAÑAS (TAMAÑO 22px) ---
@@ -448,86 +500,188 @@ with tab1:
     st.markdown("### 📄 Procesador de Extractos Bancarios")
     banco_sel = st.selectbox("Seleccionar Banco:", ["Macro", "Galicia", "Mercado Pago", "ICBC", "Credicoop", "BBVA Francés"])
     c1, c2 = st.columns(2)
-    with c1: archivo_pdf = st.file_uploader("Subir PDF del banco", type="pdf")
-    with c2: archivo_dic_bancos = st.file_uploader("Subir Diccionario (Opcional)", type="xlsx", key="db")
+    with c1: 
+        archivo_pdf = st.file_uploader("Subir PDF del banco", type="pdf")
+    with c2: 
+        archivo_dic_bancos = st.file_uploader("Subir Diccionario (Opcional)", type="xlsx", key="dic_bancos")
+        
     if archivo_pdf:
         try:
             with pdfplumber.open(archivo_pdf) as pdf:
                 if banco_sel == "Galicia":
-                    t1 = (pdf.pages[0].extract_text() or "").upper()
-                    d_dfs = motor_galicia_office(pdf) if "OFFICE" in t1 or '","' in t1 else motor_galicia_tradicional(pdf)
-                elif banco_sel == "Macro": d_dfs = motor_macro(pdf)
-                elif banco_sel == "ICBC": d_dfs = motor_icbc(pdf)
-                elif banco_sel == "Mercado Pago": d_dfs = motor_mercado_pago(pdf)
-                elif banco_sel == "Credicoop": d_dfs = motor_credicoop(pdf)
-                else: d_dfs = motor_frances(pdf)
-                if d_dfs:
+                    texto_p1 = (pdf.pages[0].extract_text() or "").upper()
+                    dict_dfs = motor_galicia_office(pdf) if "OFFICE" in texto_p1 or '","' in texto_p1 else motor_galicia_tradicional(pdf)
+                elif banco_sel == "Macro": dict_dfs = motor_macro(pdf)
+                elif banco_sel == "ICBC": dict_dfs = motor_icbc(pdf)
+                elif banco_sel == "Mercado Pago": dict_dfs = motor_mercado_pago(pdf)
+                elif banco_sel == "Credicoop": dict_dfs = motor_credicoop(pdf)
+                else: dict_dfs = motor_frances(pdf)
+                
+                if dict_dfs:
                     st.session_state.contador_usos += 1
-                    df_man_b = pd.read_excel(archivo_dic_bancos) if archivo_dic_bancos else None
-                    c_sel = st.selectbox("Cuenta detectada:", list(d_dfs.keys()))
-                    df_fin_b = aplicar_diccionario_final(d_dfs[c_sel], df_man_b)
-                    cols_b = ['Fecha', 'Concepto', 'Debitos', 'Creditos', 'Saldo', 'Imputación']
-                    df_m_b = df_fin_b[[c for c in cols_b if c in df_fin_b.columns]]
-                    st.dataframe(df_m_b.style.format({'Debitos': '{:,.2f}', 'Creditos': '{:,.2f}', 'Saldo': '{:,.2f}'}), use_container_width=True)
-                    out_b = io.BytesIO()
-                    with pd.ExcelWriter(out_b) as writer:
-                        for k, df_b in d_dfs.items():
-                            df_ex_b = aplicar_diccionario_final(df_b, df_man_b)
-                            df_ex_b[[c for c in cols_b if c in df_ex_b.columns]].to_excel(writer, index=False, sheet_name=str(k)[:31].replace("/", "-"))
-                    st.download_button("🚀 DESCARGAR EXCEL", out_b.getvalue(), f"conciliacion_{banco_sel.lower()}.xlsx")
-        except Exception as e: st.error(f"Error: {e}")
+                    df_manual_b = pd.read_excel(archivo_dic_bancos) if archivo_dic_bancos else None
+                    
+                    cta_sel = st.selectbox("Cuenta detectada:", list(dict_dfs.keys()))
+                    df_final_b = aplicar_diccionario_final(dict_dfs[cta_sel], df_manual_b)
+                    
+                    cols_visibles_b = ['Fecha', 'Concepto', 'Debitos', 'Creditos', 'Saldo', 'Imputación']
+                    df_mostrar_b = df_final_b[[c for c in cols_visibles_b if c in df_final_b.columns]]
+                    
+                    st.dataframe(df_mostrar_b.style.format({'Debitos': '{:,.2f}', 'Creditos': '{:,.2f}', 'Saldo': '{:,.2f}'}), use_container_width=True)
+                    
+                    output_b = io.BytesIO()
+                    with pd.ExcelWriter(output_b) as writer:
+                        for k, df_b in dict_dfs.items():
+                            df_exp_b = aplicar_diccionario_final(df_b, df_manual_b)
+                            df_exp_b[[c for c in cols_visibles_b if c in df_exp_b.columns]].to_excel(writer, index=False, sheet_name=str(k)[:31].replace("/", "-"))
+                    st.download_button("🚀 DESCARGAR EXCEL", output_b.getvalue(), f"conciliacion_{banco_sel.lower()}.xlsx")
+                else:
+                    st.warning("No se encontraron movimientos. Verificá que seleccionaste el banco correcto.")
+        except Exception as e:
+            st.error(f"Error técnico en Bancos: {e}")
 
+# -----------------------------------------------------
+# LÓGICA DE COMPRAS ORIGINAL RESTAURADA (INTACTA)
+# -----------------------------------------------------
 with tab2:
     st.markdown("### 🛒 Generador de Asientos de Compras")
-    cc1, cc2 = st.columns(2)
-    with cc1: arc_comp = st.file_uploader("1. Subir compras", type=["xlsx", "xls"], key="c", on_change=limpiar_memoria)
-    with cc2: arc_dic_c = st.file_uploader("2. Subir diccionario", type=["xlsx"], key="dc", on_change=limpiar_memoria)
-    if arc_comp and arc_dic_c:
-        if st.button("🔥 GENERAR ASIENTO"):
-            try:
-                df = pd.read_excel(arc_comp); df_d = pd.read_excel(arc_dic_c)
-                df.columns = df.columns.astype(str).str.strip().str.upper()
-                df_d.columns = df_d.columns.astype(str).str.strip().str.upper()
-                for v in ['PROVEEDOR', 'RAZON SOCIAL', 'NOMBRE', 'DENOMINACION']:
-                    if v in df.columns: df.rename(columns={v: 'PROVEEDOR_KEY'}, inplace=True); break
-                for v in ['PROVEEDOR', 'RAZON SOCIAL', 'NOMBRE', 'DENOMINACION']:
-                    if v in df_d.columns: df_d.rename(columns={v: 'PROVEEDOR_KEY'}, inplace=True); break
-                df = df.dropna(subset=['PROVEEDOR_KEY'])
-                df['P_MATCH'] = df['PROVEEDOR_KEY'].astype(str).str.upper().str.replace(r'[.,]', '', regex=True).str.replace(r'\s+', ' ', regex=True).str.strip()
-                df_d['P_MATCH'] = df_d['PROVEEDOR_KEY'].astype(str).str.upper().str.replace(r'[.,]', '', regex=True).str.replace(r'\s+', ' ', regex=True).str.strip()
-                mapeo = dict(zip(df_d['P_MATCH'], df_d['CUENTA']))
-                df['Cuenta_Gasto'] = df['P_MATCH'].map(mapeo).fillna('⚡ Clasificar')
-                st.session_state.proveedores_faltantes = df[df['Cuenta_Gasto'] == '⚡ Clasificar']['PROVEEDOR_KEY'].unique().tolist()
-                dict_cols = {'Exento': ['EXENTO', 'NO GRAVADO'], 'Gravado': ['GRAVADO', 'NETO GRAVADO'], 'IVA 10,5': ['IVA 10,5', 'IVA 10.5'], 'IVA 21': ['IVA 21', 'IVA'], 'IVA 27': ['IVA 27'], 'IIBB': ['RETENCIONES IIBB', 'OTROS TRIBUTOS'], 'Perc_IVA': ['PERCEPCIONES IVA'], 'Total': ['IMPORTE TOTAL', 'TOTAL']}
-                for c_est, vars in dict_cols.items():
-                    fnd = False
-                    for v in vars:
-                        if v in df.columns:
-                            s = df[v].astype(str).str.replace('.', '', regex=False).str.replace(',', '.', regex=False)
-                            df[c_est] = pd.to_numeric(s, errors='coerce').fillna(0); fnd = True; break
-                    if not fnd: df[c_est] = 0.0
-                df['Neto_T'] = df['Exento'] + df['Gravado']
-                f_s = pd.to_datetime(df['FECHA'], dayfirst=True, errors='coerce').max().strftime('%d/%m/%Y')
-                asnt = []
-                gst = df.groupby('Cuenta_Gasto')['Neto_T'].sum().reset_index()
-                for _, r in gst.iterrows(): 
-                    if r['Neto_T'] != 0: asnt.append({"Fecha": f_s, "Cuenta": r['Cuenta_Gasto'], "Debe": r['Neto_T'], "Haber": 0.0})
-                for n, c in [("IVA 10.5", 'IVA 10,5'), ("IVA 21", 'IVA 21'), ("IVA 27", 'IVA 27'), ("IIBB", 'IIBB'), ("Perc IVA", 'Perc_IVA')]:
-                    if df[c].sum() != 0: asnt.append({"Fecha": f_s, "Cuenta": n, "Debe": df[c].sum(), "Haber": 0.0})
-                asnt.append({"Fecha": f_s, "Cuenta": "Proveedores", "Debe": 0.0, "Haber": df['Total'].sum()})
-                df_f_c = pd.DataFrame(asnt)
-                dif = round(df_f_c['Haber'].sum() - df_f_c['Debe'].sum(), 2)
-                if dif != 0: asnt.append({"Fecha": f_s, "Cuenta": "⚡ Ajuste", "Debe": dif if dif > 0 else 0.0, "Haber": abs(dif) if dif < 0 else 0.0})
-                st.session_state.asiento_generado = pd.DataFrame(asnt); st.session_state.fecha_asiento = f_s; st.session_state.contador_usos += 1; st.rerun()
-            except Exception as e: st.error(f"Error: {e}")
+    
+    col_c1, col_c2 = st.columns(2)
+    with col_c1: 
+        archivo_compras = st.file_uploader("1. Subir compras (.xlsx, .xls)", type=["xlsx", "xls"], key="compras", on_change=limpiar_memoria)
+    with col_c2: 
+        archivo_dicc_compras = st.file_uploader("2. Subir diccionario de compras", type=["xlsx"], key="diccionario_com", on_change=limpiar_memoria)
+
+    if archivo_compras and archivo_dicc_compras:
+        st.markdown("<br>", unsafe_allow_html=True)
+        if st.button("🔥 GENERAR ASIENTO AUTOMÁTICO", key="btn_compras"):
+            with st.spinner('🚀 Procesando facturas y cuadrando IVA...'):
+                try:
+                    df = pd.read_excel(archivo_compras)
+                    df_dicc = pd.read_excel(archivo_dicc_compras)
+                    
+                    df.columns = df.columns.astype(str).str.strip().str.upper()
+                    df_dicc.columns = df_dicc.columns.astype(str).str.strip().str.upper()
+                    
+                    for v in ['PROVEEDOR', 'PROVEEDORES', 'RAZON SOCIAL', 'RAZÓN SOCIAL', 'NOMBRE', 'DENOMINACION', 'DENOMINACIÓN EMISOR']:
+                        if v in df.columns: df.rename(columns={v: 'PROVEEDOR_KEY'}, inplace=True); break
+                    for v in ['PROVEEDOR', 'PROVEEDORES', 'RAZON SOCIAL', 'RAZÓN SOCIAL', 'NOMBRE', 'DENOMINACION', 'DENOMINACIÓN EMISOR']:
+                        if v in df_dicc.columns: df_dicc.rename(columns={v: 'PROVEEDOR_KEY'}, inplace=True); break
+                    
+                    falta_compras = 'PROVEEDOR_KEY' not in df.columns
+                    falta_dicc = 'PROVEEDOR_KEY' not in df_dicc.columns
+                    
+                    if falta_compras and falta_dicc:
+                        st.error("❌ No detectamos la columna de Proveedor en NINGUNO de los dos archivos. Asegurate de que la fila 1 tenga los títulos correctos.")
+                        st.stop()
+                    elif falta_compras:
+                        st.error("❌ Error en el Paso 1: No encontramos la columna 'Proveedor' (o 'Razón Social') en tu archivo de COMPRAS.")
+                        st.stop()
+                    elif falta_dicc:
+                        st.error("❌ Error en el Paso 2: No encontramos la columna 'Proveedor' (o 'Razón Social') en tu archivo de DICCIONARIO.")
+                        st.stop()
+                    
+                    df = df.dropna(subset=['PROVEEDOR_KEY'])
+                    df = df[df['PROVEEDOR_KEY'].astype(str).str.strip() != '']
+                    df = df[df['PROVEEDOR_KEY'].astype(str).str.lower() != 'nan']
+                    df = df[~df['PROVEEDOR_KEY'].astype(str).str.upper().str.contains('TOTAL', na=False)]
+                    
+                    for col in df.columns:
+                        if 'FECHA' in col.upper():
+                            df = df[~df[col].astype(str).str.upper().str.contains('TOTAL', na=False)]
+                            break
+
+                    df['P_MATCH'] = df['PROVEEDOR_KEY'].astype(str).str.upper().str.replace(r'[.,]', '', regex=True).str.replace(r'\s+', ' ', regex=True).str.strip()
+                    df_dicc['P_MATCH'] = df_dicc['PROVEEDOR_KEY'].astype(str).str.upper().str.replace(r'[.,]', '', regex=True).str.replace(r'\s+', ' ', regex=True).str.strip()
+                    
+                    df_dicc['CUENTA'] = df_dicc['CUENTA'].astype(str).replace(['nan', 'NaN', 'None', ''], '⚡ Clasificar Proveedor')
+                    
+                    mapeo = dict(zip(df_dicc['P_MATCH'], df_dicc['CUENTA']))
+                    df['Cuenta_Gasto'] = df['P_MATCH'].map(mapeo).fillna('⚡ Clasificar Proveedor')
+
+                    faltantes_reales = df[df['Cuenta_Gasto'] == '⚡ Clasificar Proveedor']['PROVEEDOR_KEY'].unique().tolist()
+                    st.session_state.proveedores_faltantes = [str(p) for p in faltantes_reales if str(p).strip() != '']
+
+                    diccionario_columnas = {
+                        'Exento': ['EXENTO', 'OPERACIONES EXENTAS', 'NO GRAVADO', 'CONCEPTOS NO GRAVADOS', 'IMP. OP. EXENTAS'], 
+                        'Gravado': ['GRAVADO', 'NETO GRAVADO', 'IMPORTE NETO GRAVADO', 'IMP. NETO GRAVADO'], 
+                        'IVA 10,50': ['IVA 10,50', 'IVA 10.50', 'IVA 10,50%', 'IVA 10.50%', 'IVA 10,5%', 'IVA 10.5%', 'IVA AL 10,50%'], 
+                        'IVA 21%': ['IVA', 'IMPORTE IVA', 'IVA 21%', 'IVA 21', 'IVA AL 21%', 'IVA 21,00%', 'IVA 21.00%'], 
+                        'IVA 27%': ['IVA 27%', 'IVA 27', 'IVA AL 27%'], 
+                        'Retenciones IIBB': ['RETENCIONES IIBB', 'PERCEPCIONES IIBB', 'PERC. IIBB', 'PERCEPCIÓN IIBB', 'OTROS TRIBUTOS'], 
+                        'Percepciones IVA': ['PERCEPCIONES IVA', 'PERC. IVA', 'PERCEPCIÓN IVA', 'PERCEPCION IVA', 'PERC IVA', 'PERCEPCIONES NACIONALES'],
+                        'Importe Total': ['IMPORTE TOTAL', 'TOTAL', 'TOTAL FACTURADO']
+                    }
+
+                    for col_estandar, variantes in diccionario_columnas.items():
+                        col_encontrada = False
+                        for variante in variantes:
+                            if variante in df.columns:
+                                if df[variante].dtype == 'object':
+                                    serie = df[variante].astype(str).str.replace('.', '', regex=False).str.replace(',', '.', regex=False)
+                                    df[col_estandar] = pd.to_numeric(serie, errors='coerce').fillna(0)
+                                else:
+                                    df[col_estandar] = pd.to_numeric(df[variante], errors='coerce').fillna(0)
+                                col_encontrada = True; break
+                        if not col_encontrada: df[col_estandar] = 0.0
+
+                    df['Neto_Total'] = df['Exento'] + df['Gravado']
+                    f_max = pd.to_datetime(df['FECHA'], dayfirst=True, errors='coerce').max() if 'FECHA' in df.columns else None
+                    f_str = f_max.strftime('%d/%m/%Y') if not pd.isnull(f_max) else "01/01/2026"
+
+                    asiento = []
+                    gastos = df.groupby('Cuenta_Gasto')['Neto_Total'].sum().reset_index()
+                    for _, r in gastos.iterrows():
+                        if r['Neto_Total'] != 0: asiento.append({"Fecha": f_str, "Cuenta": r['Cuenta_Gasto'], "Debe": r['Neto_Total'], "Haber": 0.0})
+                    
+                    lista_impuestos = [
+                        ("IVA CF 10.5%", 'IVA 10,50'), 
+                        ("IVA CF 21%", 'IVA 21%'), 
+                        ("IVA CF 27%", 'IVA 27%'), 
+                        ("Ret. IIBB", 'Retenciones IIBB'),
+                        ("Percepciones IVA", 'Percepciones IVA')
+                    ]
+                    
+                    for nom_cta, col_val in lista_impuestos:
+                        if df[col_val].sum() != 0: asiento.append({"Fecha": f_str, "Cuenta": nom_cta, "Debe": df[col_val].sum(), "Haber": 0.0})
+                    
+                    asiento.append({"Fecha": f_str, "Cuenta": "Proveedores", "Debe": 0.0, "Haber": df['Importe Total'].sum()})
+
+                    df_final_c = pd.DataFrame(asiento)
+                    diferencia = round(round(df_final_c['Haber'].sum(), 2) - round(df_final_c['Debe'].sum(), 2), 2)
+                    
+                    if diferencia != 0:
+                        asiento.append({"Fecha": f_str, "Cuenta": "⚡ Ajuste/Diferencia", "Debe": diferencia if diferencia > 0 else 0.0, "Haber": abs(diferencia) if diferencia < 0 else 0.0})
+                        df_final_c = pd.DataFrame(asiento)
+
+                    st.session_state.asiento_generado = df_final_c
+                    st.session_state.fecha_asiento = f_str
+                    st.session_state.contador_usos += 1
+                    st.rerun()
+
+                except Exception as e:
+                    st.error(f"❌ Error en el proceso: {e}")
 
     if st.session_state.asiento_generado is not None:
+        st.markdown("---")
         if st.session_state.proveedores_faltantes:
-            st.error("⚠️ Proveedores sin clasificar detectados.")
-            st.dataframe(pd.DataFrame({"Proveedor": st.session_state.proveedores_faltantes}), use_container_width=True)
-        st.table(st.session_state.asiento_generado.style.format({"Debe": "${:,.2f}", "Haber": "${:,.2f}"}))
-        buf_c = io.BytesIO()
-        with pd.ExcelWriter(buf_c) as writer: st.session_state.asiento_generado.to_excel(writer, index=False)
-        st.download_button("📥 DESCARGAR EXCEL", buf_c.getvalue(), f"asiento_{st.session_state.fecha_asiento.replace('/','_')}.xlsx")
+            st.error(f"⚠️ **¡Atención! Hay {len(st.session_state.proveedores_faltantes)} proveedor(es) sin clasificar.**")
+            st.info("💡 Copiá los nombres de esta lista y pegalos en la columna 'Proveedor' de tu Excel de Diccionario para la próxima vez:")
+            df_faltantes = pd.DataFrame({"Proveedor (Copiar)": st.session_state.proveedores_faltantes, "Cuenta Contable (A completar)": ""})
+            st.dataframe(df_faltantes, use_container_width=True)
+            st.markdown("<br>", unsafe_allow_html=True)
 
-st.markdown("<br><br><p style='text-align: center; opacity: 0.5;'>Hecho con amor ❤️ para contadores</p>", unsafe_allow_html=True)
+        st.markdown("""<div style="background-color: rgba(43, 108, 176, 0.1); border-left: 5px solid #2B6CB0; padding: 20px; border-radius: 10px; margin-bottom: 25px;"><h3 style="color: #2B6CB0; margin: 0;">✅ ¡Asiento generado!</h3></div>""", unsafe_allow_html=True)
+        st.table(st.session_state.asiento_generado.style.format({"Debe": "${:,.2f}", "Haber": "${:,.2f}"}))
+        
+        col_d1, col_d2 = st.columns(2)
+        with col_d1:
+            try:
+                buf_c = io.BytesIO()
+                with pd.ExcelWriter(buf_c, engine='openpyxl') as writer: st.session_state.asiento_generado.to_excel(writer, index=False)
+                st.download_button("📥 DESCARGAR ASIENTO (EXCEL)", buf_c.getvalue(), f"asiento_compras_{st.session_state.fecha_asiento.replace('/','_')}.xlsx", key="down_compras")
+            except Exception:
+                csv_data = st.session_state.asiento_generado.to_csv(index=False, sep=';', decimal=',')
+                st.download_button("📥 DESCARGAR ASIENTO (CSV)", csv_data.encode('utf-8-sig'), f"asiento_compras.csv", mime="text/csv", key="down_compras_csv")
+
+st.markdown("<br><br><p style='text-align: center; opacity: 0.5;'>Hecho con amor ❤️ para automatizar contabilidad</p>", unsafe_allow_html=True)
