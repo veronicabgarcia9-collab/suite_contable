@@ -22,7 +22,8 @@ LIMITE_GRATIS = 3
 st.markdown("""
     <style>
     /* Eliminamos el color de fondo forzado para que Streamlit aplique su Modo Oscuro nativo */
-    h1 { font-family: 'Arial', sans-serif; font-weight: 800; text-align: center; text-transform: uppercase; letter-spacing: 1px; padding-bottom: 20px; }
+    h1 { color: #4DA8DA !important; font-family: 'Arial', sans-serif; font-weight: 800; text-align: center; text-transform: uppercase; letter-spacing: 1px; padding-bottom: 20px; }
+    h2, h3, h4 { color: #4DA8DA !important; }
     .stFileUploader { border: 2px dashed #4DA8DA !important; border-radius: 8px; padding: 10px; }
     
     .counter-container { border-left: 5px solid #4DA8DA; border-radius: 4px; padding: 15px; text-align: center; margin-bottom: 25px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
@@ -323,30 +324,66 @@ def motor_icbc(pdf):
     return {}
 
 # -----------------------------------------------------
-# MOTOR CREDICOOP: 100% EL ORIGINAL QUE FUNCIONABA
+# MOTOR CREDICOOP: DEFINITIVO Y BLINDADO
 # -----------------------------------------------------
 def motor_credicoop(pdf):
     movs, s_ini, ini_set = [], 0.0, False
     for page in pdf.pages:
         words = page.extract_words()
-        lineas = {}
-        for w in words: lineas.setdefault(round(w['top'], 1), []).append(w)
-        for y in sorted(lineas.keys()):
-            f_w = sorted(lineas[y], key=lambda x: x['x0'])
+        
+        # Agrupación inteligente de líneas (Tolerancia de 3 píxeles)
+        lineas = []
+        words_sorted = sorted(words, key=lambda w: (w['top'], w['x0']))
+        for w in words_sorted:
+            agregado = False
+            for linea in lineas:
+                if abs(linea[0]['top'] - w['top']) < 3:
+                    linea.append(w)
+                    agregado = True
+                    break
+            if not agregado:
+                lineas.append([w])
+                
+        for linea in lineas:
+            f_w = sorted(linea, key=lambda x: x['x0'])
             txt = " ".join([w['text'] for w in f_w])
+            
             if "SALDO ANTERIOR" in txt.upper() and not ini_set:
                 ms = re.findall(r'\d{1,3}(?:\.\d{3})*,\d{2}', txt)
                 if ms: s_ini = limpiar_monto_ar(ms[-1]); ini_set = True
-            m_f = re.match(r'^(\d{2}/\d{2}/\d{2})', txt)
+                
+            # Soporte años de 2 o 4 dígitos para que no se rompa en 2025+
+            m_f = re.match(r'^(\d{2}/\d{2}/\d{2,4})', txt.strip())
             if m_f:
-                fecha, deb, cre, cp = m_f.group(1), 0.0, 0.0, []
+                fecha = m_f.group(1)
+                deb, cre, cp = 0.0, 0.0, []
+                
                 for p in f_w:
-                    if re.search(r'\d,\d{2}', p['text']):
+                    # Filtro estricto para montos (evita falsos positivos como 1,5%)
+                    if re.match(r'^-?\d{1,3}(?:\.\d{3})*,\d{2}$', p['text']):
                         v = limpiar_monto_ar(p['text'])
-                        if p['x0'] < 445: deb = abs(v)
-                        else: cre = v
-                    elif p['text'] not in fecha: cp.append(p['text'])
-                if deb > 0 or cre > 0: movs.append({"Fecha": fecha, "Concepto": " ".join(cp), "Debitos": deb, "Creditos": cre, "Neto": cre-deb})
+                        
+                        # Reglas espaciales estrictas: 
+                        # - Antes de 445 = Débito
+                        # - Entre 445 y 520 = Crédito
+                        # - Mayor a 520 = Saldo (se ignora para no pisar al Crédito)
+                        if p['x0'] < 445: 
+                            deb = abs(v)
+                        elif p['x0'] < 520: 
+                            cre = v
+                            
+                    elif p['text'] != fecha: 
+                        cp.append(p['text'])
+                        
+                if deb > 0 or cre > 0: 
+                    movs.append({
+                        "Fecha": fecha, 
+                        "Concepto": " ".join(cp).strip(), 
+                        "Debitos": deb, 
+                        "Creditos": cre, 
+                        "Neto": cre-deb
+                    })
+                    
     df = pd.DataFrame(movs)
     if not df.empty:
         df['Saldo'] = s_ini + df['Neto'].cumsum()
@@ -466,7 +503,7 @@ with tab1:
             st.error(f"Error técnico en Bancos: {e}")
 
 # -----------------------------------------------------
-# LÓGICA DE COMPRAS: 100% EL ORIGINAL QUE FUNCIONABA
+# LÓGICA DE COMPRAS: 100% INTACTA
 # -----------------------------------------------------
 with tab2:
     st.markdown("### 🛒 Generador de Asientos de Compras")
