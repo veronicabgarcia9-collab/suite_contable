@@ -18,94 +18,19 @@ if 'proveedores_faltantes' not in st.session_state: st.session_state.proveedores
 
 LIMITE_GRATIS = 3
 
-# --- ESTILOS MODO OSCURO EJECUTIVO ---
+# --- ESTILOS NATIVOS (COMPATIBLES CON DARK MODE DE STREAMLIT) ---
 st.markdown("""
     <style>
-    /* Forzar fondo oscuro en toda la app */
-    .stApp, .main { background-color: #0E1117 !important; color: #E0E0E0 !important; }
+    /* Eliminamos el color de fondo forzado para que Streamlit aplique su Modo Oscuro nativo */
+    h1 { font-family: 'Arial', sans-serif; font-weight: 800; text-align: center; text-transform: uppercase; letter-spacing: 1px; padding-bottom: 20px; }
+    .stFileUploader { border: 2px dashed #4DA8DA !important; border-radius: 8px; padding: 10px; }
     
-    /* Título General */
-    h1 { color: #4DA8DA !important; font-family: 'Segoe UI', sans-serif; font-weight: 800; text-align: center; text-transform: uppercase; letter-spacing: 1px; padding-bottom: 20px; }
-    
-    /* Subtítulos y Labels */
-    h2, h3, h4, label, .stMarkdown p { color: #4DA8DA !important; }
-    
-    /* Cajas de subida de archivos */
-    [data-testid="stFileUploadDropzone"] {
-        background-color: #1E1E1E !important;
-        border: 2px dashed #4DA8DA !important;
-        border-radius: 12px !important;
-    }
-    
-    /* Contenedor de contador */
-    .counter-container { 
-        background-color: #1E1E1E !important; 
-        border: 1px solid #333 !important; 
-        border-radius: 10px; 
-        padding: 15px; 
-        text-align: center; 
-        margin-bottom: 25px; 
-        box-shadow: 0 4px 6px rgba(0,0,0,0.3); 
-        color: #E0E0E0 !important; 
-    }
-    .counter-number { color: #00FFCC !important; font-weight: 800; font-size: 24px; }
+    .counter-container { border-left: 5px solid #4DA8DA; border-radius: 4px; padding: 15px; text-align: center; margin-bottom: 25px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+    .counter-number { font-weight: 800; font-size: 24px; color: #E53E3E; }
 
-    /* Botones Principales */
-    div.stButton > button:first-child { 
-        background-color: #4DA8DA !important; 
-        color: #0E1117 !important; 
-        border: none !important; 
-        border-radius: 8px !important; 
-        font-weight: bold !important; 
-        width: 100% !important; 
-        transition: 0.3s !important; 
-        height: 3rem !important;
-    }
-    div.stButton > button:first-child:hover { background-color: #388BB8 !important; transform: translateY(-2px); }
-    
-    /* Botón de Descarga */
-    .stDownloadButton > button { 
-        background-color: #00FFCC !important; 
-        color: #0E1117 !important; 
-        border: none !important; 
-        border-radius: 8px !important; 
-        width: 100% !important; 
-        font-weight: bold !important; 
-        transition: 0.3s !important;
-    }
-    .stDownloadButton > button:hover { background-color: #00CCA3 !important; opacity: 0.9 !important; }
-    
-    /* Card de Donación */
-    .donation-card { 
-        background-color: #1E1E1E !important; 
-        border: 1px solid #333 !important; 
-        border-radius: 12px; 
-        padding: 25px; 
-        text-align: center; 
-        box-shadow: 0 10px 20px rgba(0,0,0,0.4); 
-        color: #E0E0E0 !important; 
-    }
-    
-    /* Pestañas (TAMAÑO 22px y Colores Dark) */
-    .stTabs [data-baseweb="tab-list"] { gap: 24px; background-color: transparent !important; }
-    .stTabs [data-baseweb="tab"] { 
-        height: 60px; 
-        white-space: pre-wrap; 
-        background-color: #1E1E1E !important; 
-        border-radius: 8px 8px 0px 0px; 
-        padding: 10px 20px; 
-        font-weight: bold; 
-        font-size: 22px !important; 
-        color: #888 !important; 
-    }
-    .stTabs [aria-selected="true"] { 
-        color: #4DA8DA !important; 
-        border-bottom: 4px solid #4DA8DA !important; 
-        background-color: #262730 !important;
-    }
-
-    /* Dataframes y tablas */
-    .stDataFrame, .stTable { background-color: #1E1E1E !important; border-radius: 10px; }
+    /* Pestañas (Tamaño Grande) */
+    .stTabs [data-baseweb="tab-list"] { gap: 24px; }
+    .stTabs [data-baseweb="tab"] { height: 55px; white-space: pre-wrap; border-radius: 4px 4px 0px 0px; gap: 1px; padding-top: 10px; padding-bottom: 10px; font-weight: bold; font-size: 22px; }
     </style>
     """, unsafe_allow_html=True)
 
@@ -398,7 +323,7 @@ def motor_icbc(pdf):
     return {}
 
 # -----------------------------------------------------
-# MOTOR CREDICOOP ORIGINAL RESTAURADO (INTACTO)
+# MOTOR CREDICOOP: 100% EL ORIGINAL QUE FUNCIONABA
 # -----------------------------------------------------
 def motor_credicoop(pdf):
     movs, s_ini, ini_set = [], 0.0, False
@@ -493,7 +418,7 @@ if st.session_state.contador_usos >= LIMITE_GRATIS:
             st.rerun()
     st.stop()
 
-# --- PESTAÑAS (TAMAÑO 22px) ---
+# --- PESTAÑAS ---
 tab1, tab2 = st.tabs(["🏦 Bancos a Excel", "🛒 Compras a Asientos"])
 
 with tab1:
@@ -541,7 +466,7 @@ with tab1:
             st.error(f"Error técnico en Bancos: {e}")
 
 # -----------------------------------------------------
-# LÓGICA DE COMPRAS ORIGINAL RESTAURADA (INTACTA)
+# LÓGICA DE COMPRAS: 100% EL ORIGINAL QUE FUNCIONABA
 # -----------------------------------------------------
 with tab2:
     st.markdown("### 🛒 Generador de Asientos de Compras")
