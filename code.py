@@ -21,7 +21,6 @@ LIMITE_GRATIS = 3
 # --- ESTILOS NATIVOS (COMPATIBLES CON DARK MODE DE STREAMLIT) ---
 st.markdown("""
     <style>
-    /* Eliminamos el color de fondo forzado para que Streamlit aplique su Modo Oscuro nativo */
     h1 { color: #4DA8DA !important; font-family: 'Arial', sans-serif; font-weight: 800; text-align: center; text-transform: uppercase; letter-spacing: 1px; padding-bottom: 20px; }
     h2, h3, h4 { color: #4DA8DA !important; }
     .stFileUploader { border: 2px dashed #4DA8DA !important; border-radius: 8px; padding: 10px; }
@@ -324,51 +323,65 @@ def motor_icbc(pdf):
     return {}
 
 # -----------------------------------------------------
-# MOTOR CREDICOOP BLINDADO: CENTROS MATEMÁTICOS Y SIGNOS
+# MOTOR CREDICOOP ARREGLADO DEFINITIVO
 # -----------------------------------------------------
 def motor_credicoop(pdf):
-    movs, s_ini, ini_set = [], 0.0, False
+    movs = []
+    s_ini = 0.0
+    ini_set = False
     
-    skip_phrases = ["BANCO CREDICOOP", "CONTACTO TELEFONIC", "RESUMEN:", "DEBITO DIRECTO", 
-                    "CBU DE SU", "CONTINUA EN", "VIENE DE PAGINA", "PAGINA ", "CUENTA CORRIENTE", 
-                    "CALIDAD DE SERVICIOS", "WWW.BANCOCREDICOOP", "LIQUIDACION DE INTERESES", 
-                    "TNA", "TEA", "CFTEA", "PERCIBIDO DEL", "DENOMINACION", "IMPUESTO LEY", 
-                    "PERCIBIDO", "ALICUOTA"]
+    # Palabras a ignorar para limpiar la lectura
+    skip_phrases = [
+        "BANCO CREDICOOP", "CONTACTO TELEFONIC", "RESUMEN:", "DEBITO DIRECTO", 
+        "CBU DE SU", "CONTINUA EN", "VIENE DE PAGINA", "PAGINA ", "CUENTA CORRIENTE", 
+        "CALIDAD DE SERVICIOS", "WWW.BANCOCREDICOOP", "LIQUIDACION DE INTERESES", 
+        "TNA", "TEA", "CFTEA", "PERCIBIDO DEL", "DENOMINACION", "IMPUESTO LEY", 
+        "PERCIBIDO", "ALICUOTA", "F E C H A", "FECHA", "COMBTE", "DESCRIPCION", 
+        "DEBITO", "CREDITO", "SALDO", "SALDO ANTERIOR", "TOTALES"
+    ]
     
     for page in pdf.pages:
         words = page.extract_words()
+        if not words: continue
+        
+        # Agrupación precisa de renglones
         lineas = {}
         for w in words:
-            matched_y = None
-            for y in lineas.keys():
-                if abs(y - w['top']) < 3:
-                    matched_y = y
-                    break
+            y = round(w['top'])
+            matched_y = next((ky for ky in lineas.keys() if abs(ky - y) <= 3), None)
             if matched_y is not None:
                 lineas[matched_y].append(w)
             else:
-                lineas[w['top']] = [w]
-
+                lineas[y] = [w]
+                
         for y in sorted(lineas.keys()):
             f_w = sorted(lineas[y], key=lambda x: x['x0'])
             txt = " ".join([w['text'] for w in f_w])
             txt_upper = txt.upper()
-
-            if "SALDO ANTERIOR" in txt_upper and not ini_set:
-                # CORRECCIÓN 1: Se agregó el guión opcional '-?' para atrapar el saldo negativo.
-                ms = re.findall(r'-?\d{1,3}(?:\.\d{3})*,\d{2}', txt)
+            
+            # --- ARREGLO SALDO INICIAL ---
+            # Quitamos los espacios para que un signo negativo separado no se pierda
+            if "SALDO" in txt_upper and "ANTERIOR" in txt_upper and not ini_set:
+                txt_junto = txt.replace(" ", "")
+                ms = re.findall(r'(-?\d{1,3}(?:\.\d{3})*,\d{2})', txt_junto)
                 if ms:
                     s_ini = limpiar_monto_ar(ms[-1])
                     ini_set = True
                 continue
-
-            if any(x in txt_upper for x in skip_phrases): continue
-            if "TOTALES" in txt_upper and len(f_w) < 4: continue
-
-            m_f = re.search(r'^(\d{2}/\d{2}/\d{2,4})', txt.strip())
+                
+            if any(sp in txt_upper for sp in skip_phrases):
+                continue
             
-            if m_f and f_w[0]['x0'] < 100:
-                fecha = m_f.group(1)
+            # --- ARREGLO RENGLONES PEGADOS ---
+            # Buscamos la fecha explicitamente revisando las primeras palabras
+            fecha = None
+            for p in f_w:
+                if re.match(r'^\d{2}/\d{2}/\d{2,4}$', p['text']) and p['x0'] < 100:
+                    fecha = p['text']
+                    break
+                    
+            # Si encontramos una fecha nueva, armamos un movimiento
+            if fecha:
                 deb, cre = 0.0, 0.0
                 cp = []
                 for p in f_w:
@@ -376,34 +389,41 @@ def motor_credicoop(pdf):
                     
                     if re.match(r'^-?\d{1,3}(?:\.\d{3})*,\d{2}$', p['text']) and p['x0'] > 300:
                         v = limpiar_monto_ar(p['text'])
-                        
-                        # CORRECCIÓN 2: Evaluamos el centro exacto de la palabra para que las cifras gigantes no se crucen de columna
-                        center_x = (p['x0'] + p['x1']) / 2
-                        if center_x < 415:
+                        # Calculamos el centro de la palabra para que las cifras grandes no invadan columnas
+                        cx = (p['x0'] + p['x1']) / 2
+                        if cx < 430: 
                             deb = abs(v)
-                        elif center_x < 500:
+                        elif cx < 510: 
                             cre = v
                     else:
-                        if not re.match(r'^\d{6}$', p['text']):
+                        if not re.match(r'^\d{5,8}$', p['text']): # Ignorar IDs de operación
                             cp.append(p['text'])
                             
-                if deb > 0 or cre > 0:
-                    movs.append({"Fecha": fecha, "Concepto": " ".join(cp).strip(), "Debitos": deb, "Creditos": cre, "Neto": cre-deb})
-
+                if deb > 0 or cre > 0 or cp:
+                    movs.append({
+                        "Fecha": fecha, 
+                        "Concepto": " ".join(cp).strip(), 
+                        "Debitos": deb, 
+                        "Creditos": cre, 
+                        "Neto": cre - deb
+                    })
+                    
+            # Si NO hay fecha, es continuación del renglón de arriba
             elif movs:
-                cp = []
                 deb, cre = 0.0, 0.0
+                cp = []
                 for p in f_w:
                     if re.match(r'^-?\d{1,3}(?:\.\d{3})*,\d{2}$', p['text']) and p['x0'] > 300:
                         v = limpiar_monto_ar(p['text'])
-                        center_x = (p['x0'] + p['x1']) / 2
-                        if center_x < 415:
+                        cx = (p['x0'] + p['x1']) / 2
+                        if cx < 430: 
                             deb = abs(v)
-                        elif center_x < 500:
+                        elif cx < 510: 
                             cre = v
                     else:
-                        if not re.match(r'^\d{6}$', p['text']):
+                        if not re.match(r'^\d{5,8}$', p['text']):
                             cp.append(p['text'])
+                            
                 if cp:
                     movs[-1]["Concepto"] += " " + " ".join(cp).strip()
                 if deb > 0:
@@ -412,7 +432,10 @@ def motor_credicoop(pdf):
                 if cre > 0:
                     movs[-1]["Creditos"] += cre
                     movs[-1]["Neto"] += cre
-
+                    
+    # Limpiamos basuras que hayan quedado con neto 0 y sin concepto claro
+    movs = [m for m in movs if m["Neto"] != 0 or len(m["Concepto"]) > 5]
+    
     df = pd.DataFrame(movs)
     if not df.empty:
         df['Saldo'] = s_ini + df['Neto'].cumsum()
@@ -531,9 +554,6 @@ with tab1:
         except Exception as e:
             st.error(f"Error técnico en Bancos: {e}")
 
-# -----------------------------------------------------
-# LÓGICA DE COMPRAS ORIGINAL RESTAURADA
-# -----------------------------------------------------
 with tab2:
     st.markdown("### 🛒 Generador de Asientos de Compras")
     
