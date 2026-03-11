@@ -40,6 +40,8 @@ st.markdown("""
 def limpiar_monto_ar(texto):
     if not texto or pd.isna(texto): return 0.0
     t = str(texto).replace('$', '').replace(' ', '').replace('"', '').replace('+', '')
+    t = t.replace('−', '-').replace('–', '-') 
+    
     es_negativo = '-' in t
     t = t.replace('-', '')
     
@@ -63,7 +65,11 @@ def aplicar_diccionario_final(df, df_dic_manual=None):
         'N/D MANTENIMIENTO MENSUAL': 'GASTOS Y COMISIONES BANCARIAS',
         'INTERESES SOBRE SALDOS': 'GASTOS Y COMISIONES BANCARIAS',
         'DEVOLUCION COMISIONES POR': 'GASTOS Y COMISIONES BANCARIAS',
+        'COM. USO': 'GASTOS Y COMISIONES BANCARIAS',
+        'CSL 00': 'GASTOS Y COMISIONES BANCARIAS',
         'INTERESES SOBRE SALDOS DEUDORES': 'INT. BANCARIOS',
+        'I.V.A.': 'IVA CREDITO FISCAL',
+        'I.V.A': 'IVA CREDITO FISCAL',
         'IVA': 'IVA CREDITO FISCAL',
         'IMP. DEB. LEY 25.413': 'LEY 25.413',
         'IMP. DEB. LEY 25413': 'LEY 25.413',
@@ -73,33 +79,46 @@ def aplicar_diccionario_final(df, df_dic_manual=None):
         'N/D FV IMPDBCR 25413 S/DB TASA GRAL': 'LEY 25.413',
         'N/D FV IMPDBCR 25413 S/CR TASA GRA': 'LEY 25.413',
         'N/D DBCR 25413 S/DB TASA GRAL': 'LEY 25.413',
+        'IMPUESTO LEY 25.413': 'LEY 25.413',
+        'IMPUESTO LEY 25413': 'LEY 25.413',
         'PERCEP. IVA': 'PERCEPCIONES IVA',
         'RETENCION IVA PERCEPCION': 'PERCEPCIONES IVA',
+        'PERCEPCION IVA': 'PERCEPCIONES IVA',
         'RESCATE FIMA': 'RESCATE FIMA',
         'ING. BRUTOS S/ CRED': 'SIRCREB',
         'REG.RECAU.SIRCREB': 'SIRCREB',
         'N/D IIBB SANTA FE SIRCREB': 'SIRCREB',
         'N/D FV IIBB SANTA FE SIRCREB': 'SIRCREB',
+        'RECAUD. SIRCREB': 'SIRCREB',
+        'API CP': 'SIRCREB',
         'SUSCRIPCION FIMA': 'SUSCRIPCION FIMA',
         'NAVE - VENTA CON TARJETA': 'TARJETAS A COBRAR',
         'LIQ COMER PRISMA': 'TARJETAS A COBRAR',
         'NAVE PAGO': 'TARJETAS A COBRAR'
     }
+    
     if df_dic_manual is not None:
         for _, r in df_dic_manual.iterrows():
-            reglas[str(r.iloc[0]).upper().strip()] = str(r.iloc[1]).strip()
+            if pd.notna(r.iloc[0]) and pd.notna(r.iloc[1]):
+                clave_limpia = re.sub(r'\s+', ' ', str(r.iloc[0]).upper()).strip()
+                reglas[clave_limpia] = str(r.iloc[1]).strip()
             
     dic_ord = {k: v for k, v in sorted(reglas.items(), key=lambda x: len(x[0]), reverse=True)}
     df['Imputación'] = "✨ A Clasificar"
+    
     for idx, row in df.iterrows():
-        concepto = str(row['Concepto']).upper()
-        if "SALDO INICIAL" in concepto:
+        concepto_crudo = str(row['Concepto']).upper()
+        concepto_limpio = re.sub(r'\s+', ' ', concepto_crudo).strip()
+        
+        if "SALDO INICIAL" in concepto_limpio:
             df.at[idx, 'Imputación'] = ""
             continue
+            
         for clave, cuenta in dic_ord.items():
-            if clave in concepto:
+            if clave in concepto_limpio:
                 df.at[idx, 'Imputación'] = cuenta
                 break
+                
     return df
 
 def motor_galicia_tradicional(pdf):
@@ -322,29 +341,22 @@ def motor_icbc(pdf):
         return {"Resumen ICBC": pd.concat([fi, df], ignore_index=True)}
     return {}
 
-# -----------------------------------------------------
-# MOTOR CREDICOOP ARREGLADO DEFINITIVO
-# -----------------------------------------------------
 def motor_credicoop(pdf):
     movs = []
     s_ini = 0.0
     ini_set = False
-    
-    # Palabras a ignorar para limpiar la lectura
-    skip_phrases = [
-        "BANCO CREDICOOP", "CONTACTO TELEFONIC", "RESUMEN:", "DEBITO DIRECTO", 
-        "CBU DE SU", "CONTINUA EN", "VIENE DE PAGINA", "PAGINA ", "CUENTA CORRIENTE", 
-        "CALIDAD DE SERVICIOS", "WWW.BANCOCREDICOOP", "LIQUIDACION DE INTERESES", 
-        "TNA", "TEA", "CFTEA", "PERCIBIDO DEL", "DENOMINACION", "IMPUESTO LEY", 
-        "PERCIBIDO", "ALICUOTA", "F E C H A", "FECHA", "COMBTE", "DESCRIPCION", 
-        "DEBITO", "CREDITO", "SALDO", "SALDO ANTERIOR", "TOTALES"
-    ]
+    stop_parsing = False
     
     for page in pdf.pages:
+        if stop_parsing: 
+            break
+            
         words = page.extract_words()
         if not words: continue
         
-        # Agrupación precisa de renglones
+        for w in words:
+            w['text'] = w['text'].replace('−', '-').replace('–', '-')
+            
         lineas = {}
         for w in words:
             y = round(w['top'])
@@ -358,29 +370,33 @@ def motor_credicoop(pdf):
             f_w = sorted(lineas[y], key=lambda x: x['x0'])
             txt = " ".join([w['text'] for w in f_w])
             txt_upper = txt.upper()
+            txt_clean = txt_upper.replace(" ", "")
             
-            # --- ARREGLO SALDO INICIAL ---
-            # Quitamos los espacios para que un signo negativo separado no se pierda
-            if "SALDO" in txt_upper and "ANTERIOR" in txt_upper and not ini_set:
-                txt_junto = txt.replace(" ", "")
-                ms = re.findall(r'(-?\d{1,3}(?:\.\d{3})*,\d{2})', txt_junto)
+            stop_triggers = [
+                "LIQUIDACIONDEINTERESES", "TRANSFERENCIASRECIBIDAS", "TRANSFERENCIASEMITIDAS", 
+                "DETALLEDECHEQUES", "DETALLEDEDEBITOS", "DETALLEDECREDITOS", "CUOTAFEC.VTO", 
+                "RESUMENDELIQUIDACION", "DENOMINACION"
+            ]
+            if any(trigger in txt_clean for trigger in stop_triggers):
+                stop_parsing = True
+                break
+                
+            if "SALDOANTERIOR" in txt_clean and not ini_set:
+                ms = re.findall(r'(-?\d{1,3}(?:\.\d{3})*,\d{2})', txt_clean)
                 if ms:
                     s_ini = limpiar_monto_ar(ms[-1])
                     ini_set = True
                 continue
                 
-            if any(sp in txt_upper for sp in skip_phrases):
+            if "FECHA" in txt_upper or "COMBTE" in txt_upper or "BANCO CREDICOOP" in txt_upper or "CONTINUA EN" in txt_upper or "VIENE DE" in txt_upper or "PAGINA " in txt_upper:
                 continue
-            
-            # --- ARREGLO RENGLONES PEGADOS ---
-            # Buscamos la fecha explicitamente revisando las primeras palabras
+                
             fecha = None
             for p in f_w:
                 if re.match(r'^\d{2}/\d{2}/\d{2,4}$', p['text']) and p['x0'] < 100:
                     fecha = p['text']
                     break
                     
-            # Si encontramos una fecha nueva, armamos un movimiento
             if fecha:
                 deb, cre = 0.0, 0.0
                 cp = []
@@ -389,41 +405,41 @@ def motor_credicoop(pdf):
                     
                     if re.match(r'^-?\d{1,3}(?:\.\d{3})*,\d{2}$', p['text']) and p['x0'] > 300:
                         v = limpiar_monto_ar(p['text'])
-                        # Calculamos el centro de la palabra para que las cifras grandes no invadan columnas
                         cx = (p['x0'] + p['x1']) / 2
-                        if cx < 430: 
-                            deb = abs(v)
-                        elif cx < 510: 
-                            cre = v
+                        if cx < 445:
+                            deb += abs(v)
+                        elif cx < 520:
+                            cre += v
                     else:
-                        if not re.match(r'^\d{5,8}$', p['text']): # Ignorar IDs de operación
+                        if not re.match(r'^\d{5,10}$', p['text']):
                             cp.append(p['text'])
                             
                 if deb > 0 or cre > 0 or cp:
                     movs.append({
-                        "Fecha": fecha, 
-                        "Concepto": " ".join(cp).strip(), 
-                        "Debitos": deb, 
-                        "Creditos": cre, 
+                        "Fecha": fecha,
+                        "Concepto": " ".join(cp).strip(),
+                        "Debitos": deb,
+                        "Creditos": cre,
                         "Neto": cre - deb
                     })
                     
-            # Si NO hay fecha, es continuación del renglón de arriba
+            # ACA ESTABA EL PROBLEMA DEL I.V.A: DEVOLVÍ LA CALCULADORA AL SEGUNDO RENGLÓN
             elif movs:
-                deb, cre = 0.0, 0.0
                 cp = []
+                deb, cre = 0.0, 0.0
                 for p in f_w:
                     if re.match(r'^-?\d{1,3}(?:\.\d{3})*,\d{2}$', p['text']) and p['x0'] > 300:
                         v = limpiar_monto_ar(p['text'])
                         cx = (p['x0'] + p['x1']) / 2
-                        if cx < 430: 
-                            deb = abs(v)
-                        elif cx < 510: 
-                            cre = v
+                        if cx < 445:
+                            deb += abs(v)
+                        elif cx < 520:
+                            cre += v
                     else:
-                        if not re.match(r'^\d{5,8}$', p['text']):
-                            cp.append(p['text'])
-                            
+                        if p['x0'] > 80 and p['x0'] < 380:
+                            if not re.match(r'^\d{5,10}$', p['text']):
+                                cp.append(p['text'])
+                                
                 if cp:
                     movs[-1]["Concepto"] += " " + " ".join(cp).strip()
                 if deb > 0:
@@ -432,10 +448,8 @@ def motor_credicoop(pdf):
                 if cre > 0:
                     movs[-1]["Creditos"] += cre
                     movs[-1]["Neto"] += cre
-                    
-    # Limpiamos basuras que hayan quedado con neto 0 y sin concepto claro
+
     movs = [m for m in movs if m["Neto"] != 0 or len(m["Concepto"]) > 5]
-    
     df = pd.DataFrame(movs)
     if not df.empty:
         df['Saldo'] = s_ini + df['Neto'].cumsum()
