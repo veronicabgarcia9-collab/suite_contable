@@ -18,93 +18,20 @@ if 'proveedores_faltantes' not in st.session_state: st.session_state.proveedores
 
 LIMITE_GRATIS = 3
 
-# --- ESTILOS MODO OSCURO EJECUTIVO ---
+# --- ESTILOS NATIVOS (COMPATIBLES CON DARK MODE DE STREAMLIT) ---
 st.markdown("""
     <style>
-    .stApp { background-color: #0E1117; color: #E0E0E0; }
+    /* Eliminamos el color de fondo forzado para que Streamlit aplique su Modo Oscuro nativo */
+    h1 { color: #4DA8DA !important; font-family: 'Arial', sans-serif; font-weight: 800; text-align: center; text-transform: uppercase; letter-spacing: 1px; padding-bottom: 20px; }
+    h2, h3, h4 { color: #4DA8DA !important; }
+    .stFileUploader { border: 2px dashed #4DA8DA !important; border-radius: 8px; padding: 10px; }
     
-    /* Título General */
-    h1 { color: #4DA8DA; font-family: 'Segoe UI', sans-serif; font-weight: 800; text-align: center; text-transform: uppercase; letter-spacing: 1px; padding-bottom: 20px; }
-    
-    /* Subtítulos y Labels */
-    h2, h3, h4, label, .stMarkdown p { color: #4DA8DA !important; }
-    
-    /* Cajas de subida de archivos */
-    [data-testid="stFileUploadDropzone"] {
-        background-color: #1E1E1E !important;
-        border: 2px dashed #4DA8DA !important;
-        border-radius: 12px !important;
-    }
-    
-    /* Contenedor de contador */
-    .counter-container { 
-        background-color: #1E1E1E; 
-        border: 1px solid #333; 
-        border-radius: 10px; 
-        padding: 15px; 
-        text-align: center; 
-        margin-bottom: 25px; 
-        box-shadow: 0 4px 6px rgba(0,0,0,0.3); 
-        color: #E0E0E0; 
-    }
-    .counter-number { color: #00FFCC; font-weight: 800; font-size: 24px; }
+    .counter-container { border-left: 5px solid #4DA8DA; border-radius: 4px; padding: 15px; text-align: center; margin-bottom: 25px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+    .counter-number { font-weight: 800; font-size: 24px; color: #E53E3E; }
 
-    /* Botones Principales */
-    div.stButton > button:first-child { 
-        background-color: #4DA8DA; 
-        color: #0E1117; 
-        border: none; 
-        border-radius: 8px; 
-        font-weight: bold; 
-        width: 100%; 
-        transition: 0.3s; 
-        height: 3rem;
-    }
-    div.stButton > button:first-child:hover { background-color: #388BB8; transform: translateY(-2px); }
-    
-    /* Botón de Descarga */
-    .stDownloadButton > button { 
-        background-color: #00FFCC !important; 
-        color: #0E1117 !important; 
-        border: none !important; 
-        border-radius: 8px !important; 
-        width: 100%; 
-        font-weight: bold; 
-        transition: 0.3s;
-    }
-    .stDownloadButton > button:hover { background-color: #00CCA3 !important; opacity: 0.9; }
-    
-    /* Card de Donación */
-    .donation-card { 
-        background-color: #1E1E1E; 
-        border: 1px solid #333; 
-        border-radius: 12px; 
-        padding: 25px; 
-        text-align: center; 
-        box-shadow: 0 10px 20px rgba(0,0,0,0.4); 
-        color: #E0E0E0; 
-    }
-    
-    /* Pestañas (TAMAÑO 22px y Colores Dark) */
-    .stTabs [data-baseweb="tab-list"] { gap: 24px; background-color: transparent; }
-    .stTabs [data-baseweb="tab"] { 
-        height: 60px; 
-        white-space: pre-wrap; 
-        background-color: #1E1E1E; 
-        border-radius: 8px 8px 0px 0px; 
-        padding: 10px 20px; 
-        font-weight: bold; 
-        font-size: 22px !important; 
-        color: #888; 
-    }
-    .stTabs [aria-selected="true"] { 
-        color: #4DA8DA !important; 
-        border-bottom: 4px solid #4DA8DA !important; 
-        background-color: #262730;
-    }
-
-    /* Dataframes y tablas */
-    .stDataFrame, .stTable { background-color: #1E1E1E; border-radius: 10px; }
+    /* Pestañas (Tamaño Grande) */
+    .stTabs [data-baseweb="tab-list"] { gap: 24px; }
+    .stTabs [data-baseweb="tab"] { height: 55px; white-space: pre-wrap; border-radius: 4px 4px 0px 0px; gap: 1px; padding-top: 10px; padding-bottom: 10px; font-weight: bold; font-size: 22px; }
     </style>
     """, unsafe_allow_html=True)
 
@@ -397,40 +324,103 @@ def motor_icbc(pdf):
     return {}
 
 # -----------------------------------------------------
-# MOTOR CREDICOOP ARREGLADO (LÍMITE ESTRICTO SALDO)
+# MOTOR CREDICOOP: DEFINITIVO Y BLINDADO (X1 Y MULTILINEA)
 # -----------------------------------------------------
 def motor_credicoop(pdf):
     movs, s_ini, ini_set = [], 0.0, False
+    
+    # Textos a ignorar para no leer basura del PDF
+    skip_phrases = [
+        "BANCO CREDICOOP", "CONTACTO TELEFONIC", "RESUMEN:", "DEBITO DIRECTO", 
+        "CBU DE SU", "CONTINUA EN", "VIENE DE PAGINA", "PAGINA ", "CUENTA CORRIENTE", 
+        "CALIDAD DE SERVICIOS", "WWW.BANCOCREDICOOP", "LIQUIDACION DE INTERESES", 
+        "TNA", "TEA", "CFTEA", "PERCIBIDO DEL", "DENOMINACION", "IMPUESTO LEY"
+    ]
+    
     for page in pdf.pages:
         words = page.extract_words()
-        lineas = {}
-        for w in words: lineas.setdefault(round(w['top'], 1), []).append(w)
-        for y in sorted(lineas.keys()):
-            f_w = sorted(lineas[y], key=lambda x: x['x0'])
+        
+        # Agrupación inteligente de líneas (Tolerancia de 3 píxeles)
+        lineas = []
+        words_sorted = sorted(words, key=lambda w: (w['top'], w['x0']))
+        for w in words_sorted:
+            agregado = False
+            for linea in lineas:
+                if abs(linea[0]['top'] - w['top']) < 3:
+                    linea.append(w)
+                    agregado = True
+                    break
+            if not agregado:
+                lineas.append([w])
+                
+        for linea in lineas:
+            f_w = sorted(linea, key=lambda x: x['x0'])
             txt = " ".join([w['text'] for w in f_w])
+            txt_upper = txt.upper()
             
-            if "SALDO ANTERIOR" in txt.upper() and not ini_set:
+            if "SALDO ANTERIOR" in txt_upper and not ini_set:
                 ms = re.findall(r'\d{1,3}(?:\.\d{3})*,\d{2}', txt)
                 if ms: s_ini = limpiar_monto_ar(ms[-1]); ini_set = True
+                continue
                 
-            m_f = re.match(r'^(\d{2}/\d{2}/\d{2,4})', txt)
-            if m_f:
-                fecha, deb, cre, cp = m_f.group(1), 0.0, 0.0, []
+            # Filtro de basuras (Cabeceras y Pie de pagina)
+            if any(x in txt_upper for x in skip_phrases): continue
+            if "TOTALES" in txt_upper and len(f_w) < 4: continue 
+                
+            m_f = re.search(r'^(\d{2}/\d{2}/\d{2,4})', txt.strip())
+            
+            # NUEVO MOVIMIENTO (Empieza con fecha)
+            if m_f and f_w[0]['x0'] < 100:
+                fecha = m_f.group(1)
+                deb, cre = 0.0, 0.0
+                cp = []
+                
                 for p in f_w:
-                    if re.search(r'\d,\d{2}', p['text']):
+                    if p['text'] == fecha: continue
+                    
+                    # Validar si es monto. USAMOS X1 (Borde derecho) por la alineación
+                    if re.match(r'^-?\d{1,3}(?:\.\d{3})*,\d{2}$', p['text']) and p['x0'] > 300:
                         v = limpiar_monto_ar(p['text'])
-                        
-                        # AQUÍ ESTABA EL BUG: Se aisló estrictamente la columna de SALDO (x0 >= 510) para ignorarla
-                        if p['x0'] < 445: 
+                        if p['x1'] < 445: 
                             deb = abs(v)
-                        elif p['x0'] < 510: 
+                        elif p['x1'] < 515: 
                             cre = v
-                            
-                    elif p['text'] not in fecha: 
-                        cp.append(p['text'])
+                    else:
+                        # Filtramos IDs de operación de 6 dígitos
+                        if not re.match(r'^\d{6}$', p['text']):
+                            cp.append(p['text'])
                         
-                if deb > 0 or cre > 0: 
-                    movs.append({"Fecha": fecha, "Concepto": " ".join(cp), "Debitos": deb, "Creditos": cre, "Neto": cre-deb})
+                movs.append({
+                    "Fecha": fecha, 
+                    "Concepto": " ".join(cp).strip(), 
+                    "Debitos": deb, 
+                    "Creditos": cre, 
+                    "Neto": cre-deb
+                })
+                
+            # CONTINUACIÓN DE MOVIMIENTO (Monto y concepto en la linea de abajo)
+            elif movs: 
+                cp = []
+                deb, cre = 0.0, 0.0
+                for p in f_w:
+                    if re.match(r'^-?\d{1,3}(?:\.\d{3})*,\d{2}$', p['text']) and p['x0'] > 300:
+                        v = limpiar_monto_ar(p['text'])
+                        if p['x1'] < 445: 
+                            deb = abs(v)
+                        elif p['x1'] < 515: 
+                            cre = v
+                    else:
+                        if not re.match(r'^\d{6}$', p['text']):
+                            cp.append(p['text'])
+                            
+                if cp:
+                    movs[-1]["Concepto"] += " " + " ".join(cp).strip()
+                if deb > 0:
+                    movs[-1]["Debitos"] += deb
+                    movs[-1]["Neto"] -= deb
+                if cre > 0:
+                    movs[-1]["Creditos"] += cre
+                    movs[-1]["Neto"] += cre
                     
     df = pd.DataFrame(movs)
     if not df.empty:
@@ -551,7 +541,7 @@ with tab1:
             st.error(f"Error técnico en Bancos: {e}")
 
 # -----------------------------------------------------
-# LÓGICA DE COMPRAS ORIGINAL RESTAURADA (INTACTA)
+# LÓGICA DE COMPRAS 100% INTACTA ORIGINAL
 # -----------------------------------------------------
 with tab2:
     st.markdown("### 🛒 Generador de Asientos de Compras")
