@@ -324,95 +324,86 @@ def motor_icbc(pdf):
     return {}
 
 # -----------------------------------------------------
-# MOTOR CREDICOOP: DEFINITIVO Y BLINDADO (X1 Y MULTILINEA)
+# MOTOR CREDICOOP BLINDADO: CENTROS MATEMÁTICOS Y SIGNOS
 # -----------------------------------------------------
 def motor_credicoop(pdf):
     movs, s_ini, ini_set = [], 0.0, False
     
-    # Textos a ignorar para no leer basura del PDF
-    skip_phrases = [
-        "BANCO CREDICOOP", "CONTACTO TELEFONIC", "RESUMEN:", "DEBITO DIRECTO", 
-        "CBU DE SU", "CONTINUA EN", "VIENE DE PAGINA", "PAGINA ", "CUENTA CORRIENTE", 
-        "CALIDAD DE SERVICIOS", "WWW.BANCOCREDICOOP", "LIQUIDACION DE INTERESES", 
-        "TNA", "TEA", "CFTEA", "PERCIBIDO DEL", "DENOMINACION", "IMPUESTO LEY"
-    ]
+    skip_phrases = ["BANCO CREDICOOP", "CONTACTO TELEFONIC", "RESUMEN:", "DEBITO DIRECTO", 
+                    "CBU DE SU", "CONTINUA EN", "VIENE DE PAGINA", "PAGINA ", "CUENTA CORRIENTE", 
+                    "CALIDAD DE SERVICIOS", "WWW.BANCOCREDICOOP", "LIQUIDACION DE INTERESES", 
+                    "TNA", "TEA", "CFTEA", "PERCIBIDO DEL", "DENOMINACION", "IMPUESTO LEY", 
+                    "PERCIBIDO", "ALICUOTA"]
     
     for page in pdf.pages:
         words = page.extract_words()
-        
-        # Agrupación inteligente de líneas (Tolerancia de 3 píxeles)
-        lineas = []
-        words_sorted = sorted(words, key=lambda w: (w['top'], w['x0']))
-        for w in words_sorted:
-            agregado = False
-            for linea in lineas:
-                if abs(linea[0]['top'] - w['top']) < 3:
-                    linea.append(w)
-                    agregado = True
+        lineas = {}
+        for w in words:
+            matched_y = None
+            for y in lineas.keys():
+                if abs(y - w['top']) < 3:
+                    matched_y = y
                     break
-            if not agregado:
-                lineas.append([w])
-                
-        for linea in lineas:
-            f_w = sorted(linea, key=lambda x: x['x0'])
+            if matched_y is not None:
+                lineas[matched_y].append(w)
+            else:
+                lineas[w['top']] = [w]
+
+        for y in sorted(lineas.keys()):
+            f_w = sorted(lineas[y], key=lambda x: x['x0'])
             txt = " ".join([w['text'] for w in f_w])
             txt_upper = txt.upper()
-            
+
             if "SALDO ANTERIOR" in txt_upper and not ini_set:
-                ms = re.findall(r'\d{1,3}(?:\.\d{3})*,\d{2}', txt)
-                if ms: s_ini = limpiar_monto_ar(ms[-1]); ini_set = True
+                # CORRECCIÓN 1: Se agregó el guión opcional '-?' para atrapar el saldo negativo.
+                ms = re.findall(r'-?\d{1,3}(?:\.\d{3})*,\d{2}', txt)
+                if ms:
+                    s_ini = limpiar_monto_ar(ms[-1])
+                    ini_set = True
                 continue
-                
-            # Filtro de basuras (Cabeceras y Pie de pagina)
+
             if any(x in txt_upper for x in skip_phrases): continue
-            if "TOTALES" in txt_upper and len(f_w) < 4: continue 
-                
+            if "TOTALES" in txt_upper and len(f_w) < 4: continue
+
             m_f = re.search(r'^(\d{2}/\d{2}/\d{2,4})', txt.strip())
             
-            # NUEVO MOVIMIENTO (Empieza con fecha)
             if m_f and f_w[0]['x0'] < 100:
                 fecha = m_f.group(1)
                 deb, cre = 0.0, 0.0
                 cp = []
-                
                 for p in f_w:
                     if p['text'] == fecha: continue
                     
-                    # Validar si es monto. USAMOS X1 (Borde derecho) por la alineación
                     if re.match(r'^-?\d{1,3}(?:\.\d{3})*,\d{2}$', p['text']) and p['x0'] > 300:
                         v = limpiar_monto_ar(p['text'])
-                        if p['x1'] < 445: 
-                            deb = abs(v)
-                        elif p['x1'] < 515: 
-                            cre = v
-                    else:
-                        # Filtramos IDs de operación de 6 dígitos
-                        if not re.match(r'^\d{6}$', p['text']):
-                            cp.append(p['text'])
                         
-                movs.append({
-                    "Fecha": fecha, 
-                    "Concepto": " ".join(cp).strip(), 
-                    "Debitos": deb, 
-                    "Creditos": cre, 
-                    "Neto": cre-deb
-                })
-                
-            # CONTINUACIÓN DE MOVIMIENTO (Monto y concepto en la linea de abajo)
-            elif movs: 
-                cp = []
-                deb, cre = 0.0, 0.0
-                for p in f_w:
-                    if re.match(r'^-?\d{1,3}(?:\.\d{3})*,\d{2}$', p['text']) and p['x0'] > 300:
-                        v = limpiar_monto_ar(p['text'])
-                        if p['x1'] < 445: 
+                        # CORRECCIÓN 2: Evaluamos el centro exacto de la palabra para que las cifras gigantes no se crucen de columna
+                        center_x = (p['x0'] + p['x1']) / 2
+                        if center_x < 415:
                             deb = abs(v)
-                        elif p['x1'] < 515: 
+                        elif center_x < 500:
                             cre = v
                     else:
                         if not re.match(r'^\d{6}$', p['text']):
                             cp.append(p['text'])
                             
+                if deb > 0 or cre > 0:
+                    movs.append({"Fecha": fecha, "Concepto": " ".join(cp).strip(), "Debitos": deb, "Creditos": cre, "Neto": cre-deb})
+
+            elif movs:
+                cp = []
+                deb, cre = 0.0, 0.0
+                for p in f_w:
+                    if re.match(r'^-?\d{1,3}(?:\.\d{3})*,\d{2}$', p['text']) and p['x0'] > 300:
+                        v = limpiar_monto_ar(p['text'])
+                        center_x = (p['x0'] + p['x1']) / 2
+                        if center_x < 415:
+                            deb = abs(v)
+                        elif center_x < 500:
+                            cre = v
+                    else:
+                        if not re.match(r'^\d{6}$', p['text']):
+                            cp.append(p['text'])
                 if cp:
                     movs[-1]["Concepto"] += " " + " ".join(cp).strip()
                 if deb > 0:
@@ -421,7 +412,7 @@ def motor_credicoop(pdf):
                 if cre > 0:
                     movs[-1]["Creditos"] += cre
                     movs[-1]["Neto"] += cre
-                    
+
     df = pd.DataFrame(movs)
     if not df.empty:
         df['Saldo'] = s_ini + df['Neto'].cumsum()
@@ -541,7 +532,7 @@ with tab1:
             st.error(f"Error técnico en Bancos: {e}")
 
 # -----------------------------------------------------
-# LÓGICA DE COMPRAS 100% INTACTA ORIGINAL
+# LÓGICA DE COMPRAS ORIGINAL RESTAURADA
 # -----------------------------------------------------
 with tab2:
     st.markdown("### 🛒 Generador de Asientos de Compras")
