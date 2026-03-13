@@ -53,10 +53,21 @@ def limpiar_monto_ar(texto):
     try: return -float(t) if es_negativo else float(t)
     except: return 0.0
 
+# PLANCHA NIVEL DIOS: Elimina tildes y espacios dobles para asegurar coincidencias exactas
+def normalizar_texto(texto):
+    if pd.isna(texto): return ""
+    t = str(texto).upper()
+    t = re.sub(r'\s+', ' ', t).strip()
+    t = t.replace('Á', 'A').replace('É', 'E').replace('Í', 'I').replace('Ó', 'O').replace('Ú', 'U')
+    return t
+
 def aplicar_diccionario_final(df, df_dic_manual=None):
-    reglas = {
+    reglas_base = {
         'DEP.EFVO.AUTOSERVICIO TICKET': 'CAJA',
         'COMISION CHEQUE PAGADO POR CLEARING': 'GASTOS Y COMISIONES BANCARIAS',
+        'COMISION E-CHEQ PAGADO POR CLEARING': 'GASTOS Y COMISIONES BANCARIAS',
+        'COMISION E-CHEQ': 'GASTOS Y COMISIONES BANCARIAS',
+        'E-CHEQ PAGADO POR CLEARING': 'GASTOS Y COMISIONES BANCARIAS',
         'COMISION SERVICIO DE CUENTA': 'GASTOS Y COMISIONES BANCARIAS',
         'COM. GESTION TRANSF.FDOS ENTRE BCOS': 'GASTOS Y COMISIONES BANCARIAS',
         'COM. GESTION TRANSF.FDOS': 'GASTOS Y COMISIONES BANCARIAS',
@@ -67,6 +78,8 @@ def aplicar_diccionario_final(df, df_dic_manual=None):
         'DEVOLUCION COMISIONES POR': 'GASTOS Y COMISIONES BANCARIAS',
         'COM. USO': 'GASTOS Y COMISIONES BANCARIAS',
         'CSL 00': 'GASTOS Y COMISIONES BANCARIAS',
+        'SERVICIO ACREDITACIONES AUTOMATICAS': 'GASTOS Y COMISIONES BANCARIAS',
+        'SERV ACRED AUTOMATIC': 'GASTOS Y COMISIONES BANCARIAS',
         'INTERESES SOBRE SALDOS DEUDORES': 'INT. BANCARIOS',
         'I.V.A.': 'IVA CREDITO FISCAL',
         'I.V.A': 'IVA CREDITO FISCAL',
@@ -85,11 +98,13 @@ def aplicar_diccionario_final(df, df_dic_manual=None):
         'RETENCION IVA PERCEPCION': 'PERCEPCIONES IVA',
         'PERCEPCION IVA': 'PERCEPCIONES IVA',
         'RESCATE FIMA': 'RESCATE FIMA',
+        'SIRCREB': 'SIRCREB',
+        'RECAUD. SIRCREB': 'SIRCREB',
+        'RECAUD. SIRCREB LOCAL': 'SIRCREB',
         'ING. BRUTOS S/ CRED': 'SIRCREB',
         'REG.RECAU.SIRCREB': 'SIRCREB',
         'N/D IIBB SANTA FE SIRCREB': 'SIRCREB',
         'N/D FV IIBB SANTA FE SIRCREB': 'SIRCREB',
-        'RECAUD. SIRCREB': 'SIRCREB',
         'API CP': 'SIRCREB',
         'SUSCRIPCION FIMA': 'SUSCRIPCION FIMA',
         'NAVE - VENTA CON TARJETA': 'TARJETAS A COBRAR',
@@ -97,18 +112,23 @@ def aplicar_diccionario_final(df, df_dic_manual=None):
         'NAVE PAGO': 'TARJETAS A COBRAR'
     }
     
+    # Aplicar la plancha a todas las reglas (Inyectadas y del Excel)
+    reglas_limpias = {}
+    for k, v in reglas_base.items():
+        reglas_limpias[normalizar_texto(k)] = str(v).strip()
+        
     if df_dic_manual is not None:
         for _, r in df_dic_manual.iterrows():
             if pd.notna(r.iloc[0]) and pd.notna(r.iloc[1]):
-                clave_limpia = re.sub(r'\s+', ' ', str(r.iloc[0]).upper()).strip()
-                reglas[clave_limpia] = str(r.iloc[1]).strip()
+                clave_limpia = normalizar_texto(r.iloc[0])
+                reglas_limpias[clave_limpia] = str(r.iloc[1]).strip()
             
-    dic_ord = {k: v for k, v in sorted(reglas.items(), key=lambda x: len(x[0]), reverse=True)}
+    dic_ord = {k: v for k, v in sorted(reglas_limpias.items(), key=lambda x: len(x[0]), reverse=True)}
     df['Imputación'] = "✨ A Clasificar"
     
     for idx, row in df.iterrows():
-        concepto_crudo = str(row['Concepto']).upper()
-        concepto_limpio = re.sub(r'\s+', ' ', concepto_crudo).strip()
+        # Planchar el concepto del PDF para que haga "Match" perfecto
+        concepto_limpio = normalizar_texto(row['Concepto'])
         
         if "SALDO INICIAL" in concepto_limpio:
             df.at[idx, 'Imputación'] = ""
@@ -411,7 +431,7 @@ def motor_credicoop(pdf):
                         elif cx < 520:
                             cre += v
                     else:
-                        if not re.match(r'^\d{5,10}$', p['text']):
+                        if p['x0'] < 430:
                             cp.append(p['text'])
                             
                 if deb > 0 or cre > 0 or cp:
@@ -423,7 +443,6 @@ def motor_credicoop(pdf):
                         "Neto": cre - deb
                     })
                     
-            # ACA ESTABA EL PROBLEMA DEL I.V.A: DEVOLVÍ LA CALCULADORA AL SEGUNDO RENGLÓN
             elif movs:
                 cp = []
                 deb, cre = 0.0, 0.0
@@ -436,10 +455,9 @@ def motor_credicoop(pdf):
                         elif cx < 520:
                             cre += v
                     else:
-                        if p['x0'] > 80 and p['x0'] < 380:
-                            if not re.match(r'^\d{5,10}$', p['text']):
-                                cp.append(p['text'])
-                                
+                        if p['x0'] > 80 and p['x0'] < 430:
+                            cp.append(p['text'])
+                            
                 if cp:
                     movs[-1]["Concepto"] += " " + " ".join(cp).strip()
                 if deb > 0:
@@ -570,6 +588,14 @@ with tab1:
 
 with tab2:
     st.markdown("### 🛒 Generador de Asientos de Compras")
+    
+    st.info("""
+    **💡 Instructivo Rápido para Compras:**
+    1. **Archivo de Compras:** Debe ser un Excel con al menos las columnas: `Fecha`, `Proveedor` (o Razón Social), y los importes (`Gravado`, `IVA`, `Exento`, `Total`, etc.).
+    2. **Archivo Diccionario:** Un Excel con 2 columnas exactas: `Proveedor` y `Cuenta`.
+    
+    *El sistema cruzará ambos archivos, asignará las cuentas y armará el asiento contable cuadrado automáticamente.*
+    """)
     
     col_c1, col_c2 = st.columns(2)
     with col_c1: 
